@@ -1,0 +1,30 @@
+{
+  "name": "lanyard",
+  "version": "1.0.0",
+  "description": "This document outlines the implementation priorities for Lanyard, split into Backend, Database, Frontend, and AI Integration.\r The order reflects MVP-first execution, optimized for the Devpost Gemini Hackathon.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon index.js",
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShadowCodes101/gemini_hackathon.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ShadowCodes101/gemini_hackathon/issues"
+  },
+  "homepage": "https://github.com/ShadowCodes101/gemini_hackathon#readme",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
