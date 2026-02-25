@@ -237,11 +237,6 @@ export const NavbarLogo = ({ visible }: { visible?: boolean }) => {
       <span className="font-[family-name:var(--font-dm-serif)] text-xl text-black dark:text-white tracking-tight">
         Lanyard
       </span>
-      {!visible && (
-        <span className="hidden sm:inline text-sm text-neutral-400 transition-opacity duration-300">
-          is the <span className="bg-charcoal text-white px-1.5 py-0.5 rounded text-xs font-semibold">refreshingly simple</span> way to manage projects
-        </span>
-      )}
     </a>
   );
 };
