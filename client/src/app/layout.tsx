@@ -25,7 +25,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Lanyard — Build Something People Love",
+  title: "Lanyard",
   description:
     "Lanyard helps you stay organized, ship faster, and focus on what matters. The calm, confident way to manage your projects.",
 };
