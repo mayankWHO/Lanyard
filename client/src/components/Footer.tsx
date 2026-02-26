@@ -12,8 +12,7 @@ export default function Footer() {
                     </h2>
 
                     <p className="mt-8 text-warm-gray text-lg max-w-2xl mx-auto leading-relaxed">
-                        It&apos;s time for something better. Try Lanyard free — no credit
-                        card, no commitment, no nonsense.
+                        It&apos;s time for something better. Try Lanyard free.
                     </p>
 
                     <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -21,7 +20,7 @@ export default function Footer() {
                             href="#"
                             className="group inline-flex items-center gap-2.5 bg-gold text-charcoal px-8 py-4 rounded-full text-base font-bold hover:bg-gold-dark transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-gold/20"
                         >
-                            Try Lanyard for free
+                            Try Lanyard
                             <svg
                                 width="16"
                                 height="16"
@@ -36,9 +35,7 @@ export default function Footer() {
                                 <path d="M5 12h14M12 5l7 7-7 7" />
                             </svg>
                         </a>
-                        <span className="text-warm-gray text-sm">
-                            Free forever for small teams
-                        </span>
+                        
                     </div>
                 </div>
             </div>
@@ -51,14 +48,15 @@ export default function Footer() {
                             Lanyard
                         </span>
                         <span className="text-warm-gray text-sm">
-                            © {new Date().getFullYear()} All rights reserved.
+                            Made by mayankWHO.
                         </span>
                     </div>
 
                     <div className="flex items-center gap-6">
                         {/* GitHub */}
                         <a
-                            href="#"
+                            href="https://github.com/mayankWHO/"
+                            target="_blank"
                             className="text-warm-gray hover:text-cream transition-colors"
                             aria-label="GitHub"
                         >
@@ -73,7 +71,8 @@ export default function Footer() {
                         </a>
                         {/* Twitter/X */}
                         <a
-                            href="#"
+                            href="https://x.com/kyaayaarmayank/"
+                            target = "_blank"
                             className="text-warm-gray hover:text-cream transition-colors"
                             aria-label="Twitter"
                         >
@@ -88,7 +87,8 @@ export default function Footer() {
                         </a>
                         {/* Email */}
                         <a
-                            href="mailto:hello@lanyard.dev"
+                            href="mailto:mahavirmayank111@gmail.com"
+                            target="_blank"
                             className="text-warm-gray hover:text-cream transition-colors"
                             aria-label="Email"
                         >

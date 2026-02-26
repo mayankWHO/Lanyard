@@ -23,11 +23,7 @@ const faqs = [
         answer:
             "Your data is stored in redundant, encrypted servers and backed up multiple times daily. We take security seriously — and we're happy to share our full security overview with your IT team.",
     },
-    {
-        question: "Is there a free plan?",
-        answer:
-            "Yes! You can try Lanyard completely free — no credit card required. When you're ready to upgrade, our pricing is straightforward with no hidden fees.",
-    },
+    
     {
         question: "Can I export my data?",
         answer:
