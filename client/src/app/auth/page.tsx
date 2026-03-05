@@ -54,8 +54,8 @@ export default function AuthPage() {
                         type="button"
                         onClick={() => view !== "login" && switchView("login")}
                         className={`flex-1 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${view === "login"
-                                ? "bg-white text-charcoal shadow-sm"
-                                : "text-warm-gray hover:text-charcoal"
+                            ? "bg-white text-charcoal shadow-sm"
+                            : "text-warm-gray hover:text-charcoal"
                             }`}
                     >
                         Log in
@@ -64,8 +64,8 @@ export default function AuthPage() {
                         type="button"
                         onClick={() => view !== "signup" && switchView("signup")}
                         className={`flex-1 py-2 text-sm font-semibold rounded-full transition-all duration-300 ${view === "signup"
-                                ? "bg-white text-charcoal shadow-sm"
-                                : "text-warm-gray hover:text-charcoal"
+                            ? "bg-white text-charcoal shadow-sm"
+                            : "text-warm-gray hover:text-charcoal"
                             }`}
                     >
                         Sign up
@@ -76,12 +76,12 @@ export default function AuthPage() {
             {/* ── Animated form body ── */}
             <div
                 className={`transition-all duration-300 ${transitioning
-                        ? "opacity-0 translate-y-3 scale-[0.98]"
-                        : "opacity-100 translate-y-0 scale-100"
+                    ? "opacity-0 translate-y-3 scale-[0.98]"
+                    : "opacity-100 translate-y-0 scale-100"
                     }`}
             >
                 {view === "login" && <LoginForm onForgotPassword={() => switchView("forgot")} />}
-                {view === "signup" && <SignupForm />}
+                {view === "signup" && <SignupForm onSwitchToLogin={() => switchView("login")} />}
                 {view === "forgot" && <ForgotPasswordForm onBackToLogin={() => switchView("login")} />}
             </div>
         </AuthLayout>

@@ -37,12 +37,24 @@ export const register = async (req, res) => {
             });
         }
 
+        // Supabase returns a user with empty identities when the email is already taken
+        // (to prevent email enumeration), but we want to give the user clear feedback
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+            return res.status(409).json({
+                success: false,
+                error: 'Email already registered',
+                message: 'An account with this email already exists. Please log in instead.'
+            });
+        }
+
         return res.status(201).json({
             success: true,
-            message: 'User registered successfully. Please check your email to verify your account.',
+            message: 'User registered successfully.',
             data: {
                 user: data.user,
-                session: data.session
+                session: data.session,
+                access_token: data.session?.access_token || null,
+                refresh_token: data.session?.refresh_token || null
             }
         });
     } catch (error) {

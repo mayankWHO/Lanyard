@@ -1,21 +1,80 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 import AuthInput from "./AuthInput";
 import PasswordStrength from "./PasswordStrength";
 import SocialButtons from "./SocialButtons";
 import { MailIcon, LockIcon, UserIcon, AtIcon, EyeIcon, EyeOffIcon } from "./AuthIcons";
 
-export default function SignupForm() {
+interface SignupFormProps {
+    onSwitchToLogin?: () => void;
+}
+
+export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
+    const { register, loading: authLoading } = useAuth();
+
     const [name, setName] = useState("");
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
+    const [isEmailTaken, setIsEmailTaken] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+
+    const router = useRouter();
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError(null);
+
+        if (!email || !password) {
+            setError("Email and password are required.");
+            return;
+        }
+        if (password.length < 6) {
+            setError("Password must be at least 6 characters.");
+            return;
+        }
+
+        setSubmitting(true);
+        const res = await register(email, password, {
+            full_name: name || undefined,
+            username: username || undefined,
+        });
+        setSubmitting(false);
+
+        if (res.success) {
+            router.push("/dashboard");
+        } else {
+            const errMsg = res.message || res.error || "Registration failed. Please try again.";
+            setError(errMsg);
+            setIsEmailTaken(errMsg.toLowerCase().includes("already exists"));
+        }
+    };
+
+    const isLoading = submitting || authLoading;
 
     return (
-        <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-2xl px-4 py-3">
+                    {error}
+                    {isEmailTaken && onSwitchToLogin && (
+                        <button
+                            type="button"
+                            onClick={onSwitchToLogin}
+                            className="block mt-1.5 text-charcoal font-semibold hover:underline"
+                        >
+                            Log in instead →
+                        </button>
+                    )}
+                </div>
+            )}
+
             <div className="space-y-1.5">
                 <label htmlFor="signup-name" className="block text-sm font-medium text-charcoal-light">
                     Full name
@@ -77,7 +136,7 @@ export default function SignupForm() {
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={setPassword}
-                    placeholder="At least 8 characters"
+                    placeholder="At least 6 characters"
                     focusedField={focusedField}
                     fieldName="signup-password"
                     onFocus={setFocusedField}
@@ -110,9 +169,10 @@ export default function SignupForm() {
 
             <button
                 type="submit"
-                className="w-full bg-charcoal text-cream font-semibold py-3.5 rounded-full hover:bg-charcoal-light transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-charcoal/10 text-sm"
+                disabled={isLoading}
+                className="w-full bg-charcoal text-cream font-semibold py-3.5 rounded-full hover:bg-charcoal-light transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-charcoal/10 text-sm disabled:opacity-60 disabled:hover:scale-100 disabled:cursor-not-allowed"
             >
-                Create account
+                {isLoading ? "Creating account…" : "Create account"}
             </button>
 
             <SocialButtons label="or sign up with" />

@@ -1,0 +1,49 @@
+﻿Γû▓ Next.js 16.1.6 (Turbopack)
+- Environments: .env.local
+
+  Creating an optimized production build ...
+Γ£ô Compiled successfully in 3.9s
+  Running TypeScript ...
+node.exe : Failed to compile.
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" 
+"C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecifi 
+   ed: (Failed to compile.:String) [],   
+  RemoteException
+    + FullyQualifiedErrorId : NativeComm 
+   andError
+ 
+
+./src/app/dashboard/page.tsx:163:42
+Type error: This comparison appears to 
+be unintentional because the types 
+'"on_track" | "at_risk"' and '"warning"' 
+have no overlap.
+
+[0m [90m 161 |[39m                    
+                         [33m<[39m[33m
+/[39m[33mdiv[39m[33m>[39m
+ [90m 162 |[39m                        
+                 )}
+[31m[1m>[22m[39m[90m 163 |[39m     
+                                    
+{risk [33m===[39m [32m"warning"[39m 
+[33m&&[39m (
+ [90m     |[39m                        
+                  [31m[1m^[22m[39m
+ [90m 164 |[39m                        
+                     
+[33m<[39m[33mdiv[39m 
+className[33m=[39m[32m"h-2 w-2 
+rounded-full bg-amber-400 mt-1.5 
+mr-1"[39m [33m/[39m[33m>[39m
+ [90m 165 |[39m                        
+                 )}
+ [90m 166 |[39m                        
+                 {risk [33m===[39m 
+[32m"on_track"[39m [33m&&[39m ([0m
+Next.js build worker exited with code: 1 
+and signal: null
