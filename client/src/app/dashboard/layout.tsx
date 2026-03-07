@@ -2,6 +2,7 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -15,6 +16,7 @@ import {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { user, loading, logout } = useAuth();
     const router = useRouter();
+    const pathname = usePathname();
     const [isHovered, setIsHovered] = useState(false);
 
     // Sidebar is collapsed by default, expands on hover
@@ -41,6 +43,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const sidebarWidth = isCollapsed ? "w-20" : "w-64";
     const mainMargin = isCollapsed ? "ml-20" : "ml-64";
+
+    const getLinkClasses = (path: string) => {
+        const isActive = pathname === path;
+        return isActive
+            ? "flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-900 bg-stone-100 font-medium transition-colors"
+            : "flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-500 hover:bg-stone-50 hover:text-stone-900 transition-colors font-medium";
+    };
 
     return (
         <div className="min-h-screen bg-[#fafaf9] font-[family-name:var(--font-poppins)] flex text-stone-800">
@@ -75,7 +84,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     )}
                     <Link
                         href="/dashboard"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-900 bg-stone-100 font-medium transition-colors"
+                        className={getLinkClasses("/dashboard")}
                         title="Overview"
                     >
                         <HomeIcon size={18} className="shrink-0" />
@@ -83,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                     <Link
                         href="/dashboard/projects"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-500 hover:bg-stone-50 hover:text-stone-900 transition-colors font-medium"
+                        className={getLinkClasses("/dashboard/projects")}
                         title="Projects"
                     >
                         <BriefcaseIcon size={18} className="shrink-0" />
@@ -91,7 +100,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
                     <Link
                         href="/dashboard/tasks"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-stone-500 hover:bg-stone-50 hover:text-stone-900 transition-colors font-medium"
+                        className={getLinkClasses("/dashboard/tasks")}
                         title="My Tasks"
                     >
                         <CheckSquareIcon size={18} className="shrink-0" />

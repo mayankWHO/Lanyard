@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 /* ─── Types ─── */
 
@@ -189,7 +189,7 @@ export const projectsApi = {
     list() {
         return apiFetch("/projects");
     },
-    create(payload: { name: string; description?: string }) {
+    create(payload: { name: string; description?: string; status?: string; start_date?: string; target_end_date?: string }) {
         return apiFetch("/projects", {
             method: "POST",
             body: JSON.stringify(payload),
