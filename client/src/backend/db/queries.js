@@ -1,6 +1,6 @@
-const supabase = require('./client');
+import supabase from './client.js';
 
-async function getUserProfile(userId) {
+export async function getUserProfile(userId) {
     const { data, error } = await supabase
         .from('user_profiles')
         .select('*')
@@ -11,7 +11,7 @@ async function getUserProfile(userId) {
     return data;
 }
 
-async function getUserProjects(userId) {
+export async function getUserProjects(userId) {
     const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -25,7 +25,7 @@ async function getUserProjects(userId) {
     return data;
 }
 
-async function getProjectById(projectId, userId) {
+export async function getProjectById(projectId, userId) {
     const { data, error } = await supabase
         .from('projects')
         .select(`
@@ -40,7 +40,7 @@ async function getProjectById(projectId, userId) {
     return data;
 }
 
-async function getProjectMembers(projectId) {
+export async function getProjectMembers(projectId) {
     const { data, error } = await supabase
         .from('project_members')
         .select(`
@@ -54,7 +54,7 @@ async function getProjectMembers(projectId) {
     return data;
 }
 
-async function getProjectTasks(projectId, filters = {}) {
+export async function getProjectTasks(projectId, filters = {}) {
     let query = supabase
         .from('tasks')
         .select(`
@@ -81,7 +81,7 @@ async function getProjectTasks(projectId, filters = {}) {
     return data;
 }
 
-async function getTaskById(taskId) {
+export async function getTaskById(taskId) {
     const { data, error } = await supabase
         .from('tasks')
         .select(`
@@ -98,7 +98,7 @@ async function getTaskById(taskId) {
     return data;
 }
 
-async function getProjectNotes(projectId, filters = {}) {
+export async function getProjectNotes(projectId, filters = {}) {
     let query = supabase
         .from('notes')
         .select(`
@@ -126,7 +126,7 @@ async function getProjectNotes(projectId, filters = {}) {
     return data;
 }
 
-async function isProjectMember(projectId, userId) {
+export async function isProjectMember(projectId, userId) {
     const { data, error } = await supabase
         .from('project_members')
         .select('role')
@@ -141,7 +141,7 @@ async function isProjectMember(projectId, userId) {
     return data;
 }
 
-async function isAdmin(userId) {
+export async function isAdmin(userId) {
     const { data, error } = await supabase
         .from('user_profiles')
         .select('role')
@@ -152,7 +152,7 @@ async function isAdmin(userId) {
     return data.role === 'admin';
 }
 
-async function isProjectAdmin(projectId, userId) {
+export async function isProjectAdmin(projectId, userId) {
     const member = await isProjectMember(projectId, userId);
     if (!member) return false;
 
@@ -160,7 +160,7 @@ async function isProjectAdmin(projectId, userId) {
     return admin || member.role === 'project_admin';
 }
 
-module.exports = {
+const queries = {
     getUserProfile,
     getUserProjects,
     getProjectById,
@@ -172,3 +172,5 @@ module.exports = {
     isAdmin,
     isProjectAdmin
 };
+
+export default queries;

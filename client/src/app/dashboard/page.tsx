@@ -1,8 +1,11 @@
 "use client";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { projectsApi } from "@/lib/api";
+import { PROJECT_ROLES } from "@/lib/permissions";
 import { PlusIcon, CheckCircle2Icon, AlertCircleIcon, PlayIcon, FolderOpenIcon, Loader2Icon } from "lucide-react";
 
 interface Project {
@@ -10,13 +13,16 @@ interface Project {
     name: string;
     description: string;
     status: string;
-    project_members?: any[];
+    project_members?: Array<{ id: string; role: string; user_id: string }>;
     created_at?: string;
     target_end_date?: string;
+    current_user_role?: string;
 }
 
 export default function DashboardPage() {
     const { user } = useAuth();
+    const { platformRole, seedProjectRoles } = usePermissions();
+    const router = useRouter();
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoadingProjects, setIsLoadingProjects] = useState(true);
 
@@ -25,7 +31,9 @@ export default function DashboardPage() {
             try {
                 const res = await projectsApi.list();
                 if (res.success && res.data) {
-                    setProjects(res.data as Project[]);
+                    const nextProjects = res.data as Project[];
+                    setProjects(nextProjects);
+                    seedProjectRoles(nextProjects);
                 }
             } catch (err) {
                 console.error("Failed to load projects:", err);
@@ -37,7 +45,7 @@ export default function DashboardPage() {
         if (user) {
             loadProjects();
         }
-    }, [user]);
+    }, [seedProjectRoles, user]);
 
     if (!user) return null;
 
@@ -50,13 +58,18 @@ export default function DashboardPage() {
                         Welcome back, {(user.user_metadata?.full_name as string)?.split(" ")[0] || "User"}
                     </h1>
                     <p className="text-stone-500 mt-1.5 font-medium">
-                        Here's an overview of your workspace today.
+                        Here&apos;s an overview of your workspace today.
                     </p>
                 </div>
-                <button className="bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors flex items-center gap-2 shadow-sm">
-                    <PlusIcon size={16} />
-                    Create Project
-                </button>
+                {platformRole !== PROJECT_ROLES.VIEWER && (
+                    <button
+                        onClick={() => router.push("/dashboard/projects")}
+                        className="bg-stone-900 text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors flex items-center gap-2 shadow-sm"
+                    >
+                        <PlusIcon size={16} />
+                        Create Project
+                    </button>
+                )}
             </div>
 
             {/* ── Global Metrics ── */}
@@ -142,6 +155,7 @@ export default function DashboardPage() {
                             return (
                                 <div
                                     key={project.id}
+                                    onClick={() => router.push(`/dashboard/projects/${project.id}`)}
                                     className="bg-white rounded-2xl p-6 border border-stone-200/70 shadow-[0_2px_12px_rgba(0,0,0,0.01)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] hover:border-stone-300 transition-all cursor-pointer group flex flex-col"
                                 >
                                     <div className="flex items-start justify-between mb-4">

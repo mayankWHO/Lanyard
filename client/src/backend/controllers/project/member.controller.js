@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { PROJECT_ROLES, normalizeRole } from '../../utils/rbac.js';
 
 //list project members
 export const listProjectMembers = async (req, res) => {
@@ -7,13 +8,7 @@ export const listProjectMembers = async (req, res) => {
 
         const { data: members, error } = await supabase
             .from('project_members')
-            .select(`
-                id,
-                role,
-                user_id,
-                added_by,
-                added_at
-            `)
+            .select('id, role, user_id, added_by, added_at')
             .eq('project_id', projectId)
             .order('added_at', { ascending: true });
 
@@ -25,10 +20,38 @@ export const listProjectMembers = async (req, res) => {
             });
         }
 
+        const userIds = (members ?? []).map((member) => member.user_id);
+        const { data: profiles, error: profilesError } = userIds.length > 0
+            ? await supabase
+                .from('user_profiles')
+                .select('user_id, full_name, avatar_url')
+                .in('user_id', userIds)
+            : { data: [], error: null };
+
+        if (profilesError) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch member profiles',
+                message: profilesError.message
+            });
+        }
+
+        const profilesById = (profiles ?? []).reduce((acc, profile) => {
+            acc[profile.user_id] = profile;
+            return acc;
+        }, {});
+
+        const enrichedMembers = (members ?? []).map((member) => ({
+            ...member,
+            role: normalizeRole(member.role),
+            full_name: profilesById[member.user_id]?.full_name ?? null,
+            avatar_url: profilesById[member.user_id]?.avatar_url ?? null
+        }));
+
         return res.status(200).json({
             success: true,
-            data: members,
-            count: members.length
+            data: enrichedMembers,
+            count: enrichedMembers.length
         });
     } catch (error) {
         console.error('List project members error:', error);
@@ -44,37 +67,61 @@ export const listProjectMembers = async (req, res) => {
 export const addProjectMember = async (req, res) => {
     try {
         const { projectId } = req.params;
-        const { user_id, role } = req.body;
+        const { user_id, email, role } = req.body;
         const addedBy = req.user.id;
 
         // Validation
-        if (!user_id) {
+        if (!user_id && !email?.trim()) {
             return res.status(400).json({
                 success: false,
                 error: 'Validation error',
-                message: 'User ID is required'
+                message: 'User ID or email is required'
             });
         }
 
 
        
-        const validRoles = ['owner', 'member', 'viewer', 'admin', 'project_admin'];
-        const memberRole = role || 'member';
+        const validRoles = Object.values(PROJECT_ROLES);
+        const memberRole = normalizeRole(role || PROJECT_ROLES.MEMBER);
 
         if (!validRoles.includes(memberRole)) {
             return res.status(400).json({
                 success: false,
                 error: 'Validation error',
-                message: 'Invalid role. Must be one of: owner, member, viewer'
+                message: 'Invalid role. Must be one of: OWNER, ADMIN, MEMBER, VIEWER'
             });
         }
 
+
+        let resolvedUserId = user_id;
+
+        if (!resolvedUserId && email?.trim()) {
+            const { data: usersPage, error: userLookupError } = await supabase.auth.admin.listUsers();
+            if (userLookupError) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to look up user',
+                    message: userLookupError.message
+                });
+            }
+
+            const matchedUser = usersPage.users.find((user) => user.email?.toLowerCase() === email.trim().toLowerCase());
+            if (!matchedUser) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found',
+                    message: 'No authenticated user exists with that email address'
+                });
+            }
+
+            resolvedUserId = matchedUser.id;
+        }
 
         // Check if user exists
         const { data: userExists, error: userCheckError } = await supabase
             .from('user_profiles')
             .select('user_id')
-            .eq('user_id', user_id)
+            .eq('user_id', resolvedUserId)
             .single();
 
         if (userCheckError || !userExists) {
@@ -105,7 +152,7 @@ export const addProjectMember = async (req, res) => {
             .from('project_members')
             .select('id')
             .eq('project_id', projectId)
-            .eq('user_id', user_id)
+            .eq('user_id', resolvedUserId)
             .single();
 
         if (existingMember) {
@@ -121,7 +168,7 @@ export const addProjectMember = async (req, res) => {
             .from('project_members')
             .insert([{
                 project_id: projectId,
-                user_id: user_id,
+                user_id: resolvedUserId,
                 role: memberRole,
                 added_by: addedBy
             }])
@@ -144,7 +191,10 @@ export const addProjectMember = async (req, res) => {
 
         return res.status(201).json({
             success: true,
-            data: member,
+            data: {
+                ...member,
+                role: normalizeRole(member.role)
+            },
             message: 'Member added to project successfully'
         });
     } catch (error) {
@@ -172,12 +222,14 @@ export const updateProjectMember = async (req, res) => {
             });
         }
 
-        const validRoles = ['owner', 'member', 'viewer', 'admin', 'project_admin'];
-        if (!validRoles.includes(role)) {
+        const validRoles = Object.values(PROJECT_ROLES);
+        const memberRole = normalizeRole(role);
+
+        if (!validRoles.includes(memberRole)) {
             return res.status(400).json({
                 success: false,
                 error: 'Validation error',
-                message: 'Invalid role. Must be one of: owner, member, viewer'
+                message: 'Invalid role. Must be one of: OWNER, ADMIN, MEMBER, VIEWER'
             });
         }
 
@@ -200,7 +252,7 @@ export const updateProjectMember = async (req, res) => {
         // Update member role
         const { data: member, error } = await supabase
             .from('project_members')
-            .update({ role })
+            .update({ role: memberRole })
             .eq('project_id', projectId)
             .eq('user_id', userId)
             .select(`
@@ -222,7 +274,10 @@ export const updateProjectMember = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            data: member,
+            data: {
+                ...member,
+                role: normalizeRole(member.role)
+            },
             message: 'Member role updated successfully'
         });
     } catch (error) {

@@ -20,6 +20,11 @@ export interface UserData {
     user_metadata?: Record<string, unknown>;
 }
 
+export interface CurrentUserResponse {
+    user: UserData;
+    profileRole?: string | null;
+}
+
 export interface LoginResponse {
     user: UserData;
     session: Record<string, unknown>;
@@ -32,6 +37,50 @@ export interface RegisterResponse {
     session: Record<string, unknown> | null;
     access_token?: string | null;
     refresh_token?: string | null;
+}
+
+export interface AiProjectSummary {
+    summary: string;
+    completionPercent: number;
+    highlights: string[];
+    blockers: string[];
+    recommendations: string[];
+}
+
+export interface AiProjectRisk {
+    riskScore: number;
+    riskLevel: "low" | "medium" | "high";
+    reasons: string[];
+    actions: string[];
+}
+
+export interface AiProjectWorkload {
+    overloadedUsers: Array<{ userId: string; reason: string }>;
+    balancedUsers: string[];
+    bottlenecks: string[];
+    recommendations: string[];
+}
+
+export interface AiTaskBreakdown {
+    goal: string;
+    expected_outcome: string;
+    definition_of_done: string;
+    subtasks: string[];
+}
+
+export interface AiTaskRefinement {
+    refined_title: string;
+    refined_description: string;
+    ambiguities: string[];
+    missing_details: string[];
+    stronger_definition_of_done: string;
+}
+
+export interface AiNoteSummary {
+    summary: string;
+    actionItems: string[];
+    decisions: string[];
+    containsBlockers: boolean;
 }
 
 /* ─── Token helpers ─── */
@@ -148,7 +197,7 @@ export const authApi = {
     },
 
     getCurrentUser() {
-        return apiFetch<{ user: UserData }>("/auth/current-user");
+        return apiFetch<CurrentUserResponse>("/auth/current-user");
     },
 
     verifyToken() {
@@ -210,7 +259,7 @@ export const projectsApi = {
     listMembers(projectId: string) {
         return apiFetch(`/projects/${projectId}/members`);
     },
-    addMember(projectId: string, payload: { email: string; role?: string }) {
+    addMember(projectId: string, payload: { email?: string; user_id?: string; role?: string }) {
         return apiFetch(`/projects/${projectId}/members`, {
             method: "POST",
             body: JSON.stringify(payload),
@@ -309,5 +358,61 @@ export const notesApi = {
     },
     delete(projectId: string, noteId: string) {
         return apiFetch(`/notes/${projectId}/n/${noteId}`, { method: "DELETE" });
+    },
+};
+
+export const aiApi = {
+    taskBreakdown(payload: {
+        title: string;
+        description?: string;
+        priority?: string;
+        projectName?: string;
+        projectId?: string;
+    }) {
+        return apiFetch<AiTaskBreakdown>("/ai/tasks/breakdown", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+    refineTask(payload: Record<string, unknown>) {
+        return apiFetch<AiTaskRefinement>("/ai/tasks/refine", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+    projectSummary(projectId: string) {
+        return apiFetch<AiProjectSummary>(`/ai/projects/${projectId}/summary`);
+    },
+    projectRisk(projectId: string) {
+        return apiFetch<AiProjectRisk>(`/ai/projects/${projectId}/risk`);
+    },
+    projectWorkload(projectId: string) {
+        return apiFetch<AiProjectWorkload>(`/ai/projects/${projectId}/workload`);
+    },
+    projectPostmortem(projectId: string) {
+        return apiFetch(`/ai/projects/${projectId}/postmortem`, {
+            method: "POST",
+        });
+    },
+    getProjectConfig(projectId: string) {
+        return apiFetch<{ id: string; ai_system_prompt?: string | null }>(`/ai/projects/${projectId}/config`);
+    },
+    updateProjectConfig(projectId: string, payload: { ai_system_prompt: string }) {
+        return apiFetch<{ id: string; ai_system_prompt?: string | null }>(`/ai/projects/${projectId}/config`, {
+            method: "PUT",
+            body: JSON.stringify(payload),
+        });
+    },
+    summarizeNotes(payload: { noteId?: string; title?: string; content: string }) {
+        return apiFetch<AiNoteSummary>("/ai/notes/summarize", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
+    },
+    extractDecisions(payload: { notes: Array<{ title: string; content: string }> }) {
+        return apiFetch<{ decisions: Array<{ title: string; rationale: string; impact: string }> }>("/ai/notes/extract-decisions", {
+            method: "POST",
+            body: JSON.stringify(payload),
+        });
     },
 };

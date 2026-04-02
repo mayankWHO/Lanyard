@@ -1,4 +1,13 @@
 import { supabase } from '../config/supabase.js';
+import {
+    PROJECT_ROLES,
+    normalizeRole,
+    checkPermission,
+    canManageProjectSettings,
+    canMutateTasks,
+    canUseProjectAi,
+    canConfigureProjectAi
+} from '../utils/rbac.js';
 
 //check if user has platform admin role (system-level admin)
 export const requirePlatformAdmin = async (req, res, next) => {
@@ -25,8 +34,8 @@ export const requirePlatformAdmin = async (req, res, next) => {
             });
         }
 
-        //accept both old 'admin' and new 'platform_admin' for backward compatibility
-        if (profile.role !== 'admin' && profile.role !== 'platform_admin') {
+        const normalizedProfileRole = normalizeRole(profile.role);
+        if (!checkPermission(normalizedProfileRole, PROJECT_ROLES.ADMIN)) {
             return res.status(403).json({
                 success: false,
                 error: 'Insufficient permissions',
@@ -34,7 +43,7 @@ export const requirePlatformAdmin = async (req, res, next) => {
             });
         }
 
-        req.userRole = profile.role;
+        req.userRole = normalizedProfileRole;
         next();
     } catch (error) {
         console.error('Platform admin check error:', error);
@@ -82,10 +91,11 @@ export const requireProjectOwner = async (req, res, next) => {
             });
         }
 
-        //platform admin has access to all projects
-        if (profile.role === 'admin' || profile.role === 'platform_admin') {
-            req.userRole = 'platform_admin';
-            req.projectRole = 'owner';
+        const normalizedProfileRole = normalizeRole(profile.role);
+
+        if (checkPermission(normalizedProfileRole, PROJECT_ROLES.ADMIN)) {
+            req.userRole = normalizedProfileRole;
+            req.projectRole = PROJECT_ROLES.OWNER;
             return next();
         }
 
@@ -105,8 +115,9 @@ export const requireProjectOwner = async (req, res, next) => {
             });
         }
 
-        
-        if (member.role !== 'project_admin' && member.role !== 'owner') {
+        const normalizedMemberRole = normalizeRole(member.role);
+
+        if (!canManageProjectSettings(normalizedMemberRole)) {
             return res.status(403).json({
                 success: false,
                 error: 'Insufficient permissions',
@@ -114,8 +125,8 @@ export const requireProjectOwner = async (req, res, next) => {
             });
         }
 
-        req.userRole = profile.role;
-        req.projectRole = member.role;
+        req.userRole = normalizedProfileRole;
+        req.projectRole = normalizedMemberRole;
         next();
     } catch (error) {
         console.error('Project owner check error:', error);
@@ -163,10 +174,11 @@ export const requireProjectMember = async (req, res, next) => {
             });
         }
 
-        // Platform admin has access to all projects
-        if (profile.role === 'admin' || profile.role === 'platform_admin') {
-            req.userRole = 'platform_admin';
-            req.projectRole = 'owner';
+        const normalizedProfileRole = normalizeRole(profile.role);
+
+        if (checkPermission(normalizedProfileRole, PROJECT_ROLES.ADMIN)) {
+            req.userRole = normalizedProfileRole;
+            req.projectRole = PROJECT_ROLES.OWNER;
             return next();
         }
 
@@ -186,10 +198,8 @@ export const requireProjectMember = async (req, res, next) => {
             });
         }
 
-        // Members and owners can edit, but viewers cannot
-        
-        const editableRoles = ['owner', 'project_admin', 'member'];
-        if (!editableRoles.includes(member.role)) {
+        const normalizedMemberRole = normalizeRole(member.role);
+        if (!canMutateTasks(normalizedMemberRole)) {
             return res.status(403).json({
                 success: false,
                 error: 'Insufficient permissions',
@@ -197,8 +207,8 @@ export const requireProjectMember = async (req, res, next) => {
             });
         }
 
-        req.userRole = profile.role;
-        req.projectRole = member.role;
+        req.userRole = normalizedProfileRole;
+        req.projectRole = normalizedMemberRole;
         next();
     } catch (error) {
         console.error('Project member check error:', error);
@@ -246,10 +256,11 @@ export const requireProjectAccess = async (req, res, next) => {
             });
         }
 
-        // Platform admin has access to all projects
-        if (profile.role === 'admin' || profile.role === 'platform_admin') {
-            req.userRole = 'platform_admin';
-            req.projectRole = 'owner';
+        const normalizedProfileRole = normalizeRole(profile.role);
+
+        if (checkPermission(normalizedProfileRole, PROJECT_ROLES.ADMIN)) {
+            req.userRole = normalizedProfileRole;
+            req.projectRole = PROJECT_ROLES.OWNER;
             return next();
         }
 
@@ -269,8 +280,8 @@ export const requireProjectAccess = async (req, res, next) => {
             });
         }
 
-        req.userRole = profile.role;
-        req.projectRole = member.role;
+        req.userRole = normalizedProfileRole;
+        req.projectRole = normalizeRole(member.role);
         next();
     } catch (error) {
         console.error('Project access check error:', error);
@@ -285,3 +296,27 @@ export const requireProjectAccess = async (req, res, next) => {
 // handlers
 export const requireAdmin = requirePlatformAdmin;
 export const requireProjectAdmin = requireProjectOwner;
+
+export const requireAiAccess = (req, res, next) => {
+    if (!canUseProjectAi(req.projectRole)) {
+        return res.status(403).json({
+            success: false,
+            error: 'Insufficient permissions',
+            message: 'Your role cannot use Gemini-powered project features'
+        });
+    }
+
+    next();
+};
+
+export const requireAiConfigAccess = (req, res, next) => {
+    if (!canConfigureProjectAi(req.projectRole)) {
+        return res.status(403).json({
+            success: false,
+            error: 'Insufficient permissions',
+            message: 'Only admins or owners can modify AI configuration'
+        });
+    }
+
+    next();
+};

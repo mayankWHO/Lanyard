@@ -1,11 +1,16 @@
 import { supabase } from '../../config/supabase.js';
+import { normalizeRole } from '../../utils/rbac.js';
+import { ensureUserProfile } from '../../utils/auth-profile.js';
 
 export const getCurrentUser = async (req, res) => {
     try {
+        const profile = await ensureUserProfile(req.user);
+
         return res.status(200).json({
             success: true,
             data: {
-                user: req.user
+                user: req.user,
+                profileRole: normalizeRole(profile?.role)
             }
         });
     } catch (error) {

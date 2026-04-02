@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { authApi } from "@/lib/api";
 import AuthLayout from "@/components/auth/AuthLayout";
@@ -19,17 +19,15 @@ export default function ResetPasswordContent() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [token, setToken] = useState<string | null>(null);
-
-    useEffect(() => {
-        const accessToken =
+    const token = useMemo(
+        () =>
             searchParams.get("access_token") ||
             searchParams.get("token") ||
             (typeof window !== "undefined"
                 ? new URLSearchParams(window.location.hash.substring(1)).get("access_token")
-                : null);
-        setToken(accessToken);
-    }, [searchParams]);
+                : null),
+        [searchParams],
+    );
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

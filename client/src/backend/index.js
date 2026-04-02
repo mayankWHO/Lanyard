@@ -1,15 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'node:url';
 import authRoutes from './routes/auth.routes.js';
 import projectRoutes from './routes/project.routes.js';
 import taskRoutes from './routes/task.routes.js';
 import noteRoutes from './routes/note.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT || 3001);
 
 app.use(cors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
@@ -38,6 +40,7 @@ app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/projects', projectRoutes);
 app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/notes', noteRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 //error handler
 app.use((req, res) => {
@@ -49,7 +52,7 @@ app.use((req, res) => {
 });
 
 
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
     console.error('Global error handler:', err);
     res.status(err.status || 500).json({
         success: false,
@@ -60,3 +63,11 @@ app.use((err, req, res, next) => {
 
 
 export default app;
+
+const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isEntrypoint) {
+    app.listen(PORT, () => {
+        console.log(`Lanyard backend listening on http://localhost:${PORT}`);
+    });
+}

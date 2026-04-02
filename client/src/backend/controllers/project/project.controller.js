@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { PROJECT_ROLES, normalizeRole } from '../../utils/rbac.js';
 
 //list all projects for the current user
 export const listProjects = async (req, res) => {
@@ -20,28 +21,44 @@ export const listProjects = async (req, res) => {
             });
         }
 
-        let query;
+        const platformRole = normalizeRole(profile.role);
+        let accessibleProjectIds = null;
 
-        // If admin, show all projects; otherwise show only projects user is a member of
-        if (profile.role === 'admin') {
-            query = supabase
-                .from('projects')
-                .select(`
-                    *,
-                    project_members(id, role, user_id)
-                `);
-        } else {
-            // Get projects where user is a member
-            query = supabase
-                .from('projects')
-                .select(`
-                    *,
-                    project_members!inner(role, user_id)
-                `)
-                .eq('project_members.user_id', userId);
+        if (platformRole === PROJECT_ROLES.MEMBER || platformRole === PROJECT_ROLES.VIEWER) {
+            const { data: membershipRows, error: membershipError } = await supabase
+                .from('project_members')
+                .select('project_id')
+                .eq('user_id', userId);
+
+            if (membershipError) {
+                return res.status(500).json({
+                    success: false,
+                    error: 'Failed to fetch project memberships',
+                    message: membershipError.message
+                });
+            }
+
+            accessibleProjectIds = membershipRows.map((membership) => membership.project_id);
+
+            if (accessibleProjectIds.length === 0) {
+                return res.status(200).json({
+                    success: true,
+                    data: [],
+                    count: 0
+                });
+            }
         }
 
-        const { data: projects, error } = await query.order('created_at', { ascending: false });
+        let projectQuery = supabase
+            .from('projects')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (accessibleProjectIds) {
+            projectQuery = projectQuery.in('id', accessibleProjectIds);
+        }
+
+        const { data: projects, error } = await projectQuery;
 
         if (error) {
             return res.status(500).json({
@@ -51,10 +68,50 @@ export const listProjects = async (req, res) => {
             });
         }
 
+        const projectIds = projects.map((project) => project.id);
+        const { data: memberships, error: membershipsError } = projectIds.length > 0
+            ? await supabase
+                .from('project_members')
+                .select('id, project_id, role, user_id, added_at')
+                .in('project_id', projectIds)
+            : { data: [], error: null };
+
+        if (membershipsError) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch project memberships',
+                message: membershipsError.message
+            });
+        }
+
+        const membershipsByProject = (memberships ?? []).reduce((acc, membership) => {
+            if (!acc[membership.project_id]) {
+                acc[membership.project_id] = [];
+            }
+
+            acc[membership.project_id].push({
+                ...membership,
+                role: normalizeRole(membership.role)
+            });
+
+            return acc;
+        }, {});
+
+        const data = projects.map((project) => {
+            const projectMembers = membershipsByProject[project.id] ?? [];
+            const currentMembership = projectMembers.find((member) => member.user_id === userId);
+
+            return {
+                ...project,
+                project_members: projectMembers,
+                current_user_role: currentMembership?.role ?? platformRole
+            };
+        });
+
         return res.status(200).json({
             success: true,
-            data: projects,
-            count: projects.length
+            data,
+            count: data.length
         });
     } catch (error) {
         console.error('List projects error:', error);
@@ -127,15 +184,7 @@ export const getProject = async (req, res) => {
 
         const { data: project, error } = await supabase
             .from('projects')
-            .select(`
-                *,
-                project_members(
-                    id,
-                    role,
-                    user_id,
-                    added_at
-                )
-            `)
+            .select('*')
             .eq('id', projectId)
             .single();
 
@@ -154,9 +203,61 @@ export const getProject = async (req, res) => {
             });
         }
 
+        const { data: members, error: membersError } = await supabase
+            .from('project_members')
+            .select('id, role, user_id, added_at')
+            .eq('project_id', projectId)
+            .order('added_at', { ascending: true });
+
+        if (membersError) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch project members',
+                message: membersError.message
+            });
+        }
+
+        const normalizedMembers = (members ?? []).map((member) => ({
+            ...member,
+            role: normalizeRole(member.role)
+        }));
+
+        const userIds = normalizedMembers.map((member) => member.user_id);
+        const { data: profiles, error: profilesError } = userIds.length > 0
+            ? await supabase
+                .from('user_profiles')
+                .select('user_id, full_name, avatar_url')
+                .in('user_id', userIds)
+            : { data: [], error: null };
+
+        if (profilesError) {
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to fetch member profiles',
+                message: profilesError.message
+            });
+        }
+
+        const profilesById = (profiles ?? []).reduce((acc, profile) => {
+            acc[profile.user_id] = profile;
+            return acc;
+        }, {});
+
+        const enrichedMembers = normalizedMembers.map((member) => ({
+            ...member,
+            full_name: profilesById[member.user_id]?.full_name ?? null,
+            avatar_url: profilesById[member.user_id]?.avatar_url ?? null
+        }));
+
+        const currentMembership = enrichedMembers.find((member) => member.user_id === req.user.id);
+
         return res.status(200).json({
             success: true,
-            data: project
+            data: {
+                ...project,
+                project_members: enrichedMembers,
+                current_user_role: currentMembership?.role ?? PROJECT_ROLES.MEMBER
+            }
         });
     } catch (error) {
         console.error('Get project error:', error);

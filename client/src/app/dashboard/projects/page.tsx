@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { projectsApi } from "@/lib/api";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/contexts/PermissionContext";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { projectsApi } from "@/lib/api";
+import { PROJECT_ROLES, canManageProjectSettings, normalizeRole } from "@/lib/permissions";
 import {
   PlusIcon,
   SearchIcon,
@@ -17,11 +20,14 @@ interface Project {
   description: string;
   status: string;
   created_at: string;
-  project_members?: any[];
+  project_members?: Array<{ id: string; role: string; user_id: string }>;
+  current_user_role?: string;
 }
 
 export default function ProjectsPage() {
   const { user } = useAuth();
+  const { platformRole, seedProjectRoles, setProjectRole } = usePermissions();
+  const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -48,7 +54,9 @@ export default function ProjectsPage() {
       try {
         const res = await projectsApi.list();
         if (res.success && res.data) {
-          setProjects(res.data as Project[]);
+          const nextProjects = res.data as Project[];
+          setProjects(nextProjects);
+          seedProjectRoles(nextProjects);
         }
       } catch (err) {
         console.error("Failed to load projects", err);
@@ -58,7 +66,7 @@ export default function ProjectsPage() {
     };
 
     if (user) fetchProjects();
-  }, [user]);
+  }, [seedProjectRoles, user]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,7 +83,9 @@ export default function ProjectsPage() {
       });
 
       if (res.success && res.data) {
-        setProjects([res.data as Project, ...projects]);
+        const createdProject = res.data as Project;
+        setProjects([createdProject, ...projects]);
+        setProjectRole(createdProject.id, createdProject.current_user_role);
         setIsCreateModalOpen(false);
         setNewProjectName("");
         setNewProjectDesc("");
@@ -124,13 +134,15 @@ export default function ProjectsPage() {
               className="bg-white border border-stone-200 rounded-lg pl-9 pr-4 py-2 text-sm focus:outline-none focus:border-stone-400 focus:ring-1 focus:ring-stone-400 w-64 shadow-sm transition-all"
             />
           </div>
-          <button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="bg-stone-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
-          >
-            <PlusIcon size={16} />
-            New Project
-          </button>
+          {platformRole !== PROJECT_ROLES.VIEWER && (
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="bg-stone-900 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-stone-800 transition-colors flex items-center gap-2 shadow-sm whitespace-nowrap"
+            >
+              <PlusIcon size={16} />
+              New Project
+            </button>
+          )}
         </div>
       </div>
 
@@ -183,10 +195,16 @@ export default function ProjectsPage() {
               </tr>
             ) : (
               filteredProjects.map((project) => (
-                <tr
-                  key={project.id}
-                  className="hover:bg-stone-50/50 transition-colors group cursor-pointer"
-                >
+                (() => {
+                  const projectRole = normalizeRole(project.current_user_role);
+                  const canManage = canManageProjectSettings(projectRole);
+
+                  return (
+                    <tr
+                      key={project.id}
+                      onClick={() => router.push(`/dashboard/projects/${project.id}`)}
+                      className="hover:bg-stone-50/50 transition-colors group cursor-pointer"
+                    >
                   <td className="py-4 px-6">
                     <div className="font-bold text-stone-900 group-hover:text-stone-700 transition-colors">
                       {project.name}
@@ -197,13 +215,12 @@ export default function ProjectsPage() {
                   </td>
                   <td className="py-4 px-6">
                     <span
-                      className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest ${
-                        project.status === "active"
+                      className={`inline-flex items-center px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest ${project.status === "active"
                           ? "bg-blue-50 text-blue-600 ring-1 ring-blue-500/20"
                           : project.status === "completed"
                             ? "bg-emerald-50 text-emerald-600 ring-1 ring-emerald-500/20"
                             : "bg-stone-100 text-stone-600 ring-1 ring-stone-500/20"
-                      }`}
+                        }`}
                     >
                       {project.status || "Active"}
                     </span>
@@ -236,19 +253,21 @@ export default function ProjectsPage() {
                     )}
                   </td>
                   <td className="py-4 px-6 text-right relative">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setActiveDropdown(
-                          activeDropdown === project.id ? null : project.id,
-                        );
-                      }}
-                      className="text-stone-400 hover:text-stone-900 p-2 rounded-lg hover:bg-stone-100 transition-all opacity-0 group-hover:opacity-100"
-                    >
-                      <MoreHorizontalIcon size={18} />
-                    </button>
+                    {canManage && (
+                      <>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveDropdown(
+                              activeDropdown === project.id ? null : project.id,
+                            );
+                          }}
+                          className="text-stone-400 hover:text-stone-900 p-2 rounded-lg hover:bg-stone-100 transition-all opacity-0 group-hover:opacity-100"
+                        >
+                          <MoreHorizontalIcon size={18} />
+                        </button>
 
-                    {activeDropdown === project.id && (
+                        {activeDropdown === project.id && (
                       <div
                         className="absolute right-6 top-10 w-40 bg-white rounded-lg shadow-lg border border-stone-200 py-1 z-10 animate-in fade-in zoom-in-95 duration-200"
                         onClick={(e) => e.stopPropagation()}
@@ -279,9 +298,13 @@ export default function ProjectsPage() {
                           Delete Project
                         </button>
                       </div>
+                        )}
+                      </>
                     )}
                   </td>
-                </tr>
+                    </tr>
+                  );
+                })()
               ))
             )}
           </tbody>
@@ -289,7 +312,7 @@ export default function ProjectsPage() {
       </div>
 
       {/* Create Project Modal */}
-      {isCreateModalOpen && (
+      {isCreateModalOpen && platformRole !== PROJECT_ROLES.VIEWER && (
         <div className="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="p-6 border-b border-stone-100">

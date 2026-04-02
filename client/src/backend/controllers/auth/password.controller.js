@@ -33,7 +33,7 @@ export const changePassword = async (req, res) => {
             });
         }
 
-        const { data, error } = await supabaseAdmin.auth.admin.updateUserById(
+        const { error } = await supabaseAdmin.auth.admin.updateUserById(
             req.user.id,
             { password: newPassword }
         );

@@ -1,7 +1,14 @@
-const supabase = require('./client');
-const queries = require('./queries');
+import supabase from './client.js';
+import * as queries from './queries.js';
 
-module.exports = {
+export {
+    supabase,
+    queries
+};
+
+const db = {
     supabase,
     ...queries
 };
+
+export default db;

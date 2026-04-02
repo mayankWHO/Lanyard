@@ -78,7 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
-        bootstrap();
+        const timeoutId = window.setTimeout(() => {
+            void bootstrap();
+        }, 0);
+
+        return () => window.clearTimeout(timeoutId);
     }, [bootstrap]);
 
     /* ── Login ── */

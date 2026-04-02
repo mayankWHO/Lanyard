@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase.js';
+import { ensureUserProfile } from '../../utils/auth-profile.js';
 
 export const register = async (req, res) => {
     try {
@@ -30,10 +31,14 @@ export const register = async (req, res) => {
         });
 
         if (error) {
-            return res.status(400).json({
+            const isDuplicateEmail = error.message?.toLowerCase().includes('already registered');
+
+            return res.status(isDuplicateEmail ? 409 : 400).json({
                 success: false,
                 error: error.message,
-                message: 'Failed to register user'
+                message: isDuplicateEmail
+                    ? 'This email already exists in Supabase Auth. If you do not see a profile row, the auth record is out of sync with public.user_profiles.'
+                    : 'Failed to register user'
             });
         }
 
@@ -45,6 +50,10 @@ export const register = async (req, res) => {
                 error: 'Email already registered',
                 message: 'An account with this email already exists. Please log in instead.'
             });
+        }
+
+        if (data.user) {
+            await ensureUserProfile(data.user);
         }
 
         return res.status(201).json({
@@ -91,6 +100,8 @@ export const login = async (req, res) => {
                 message: 'Invalid credentials'
             });
         }
+
+        await ensureUserProfile(data.user);
 
         return res.status(200).json({
             success: true,
